@@ -1,0 +1,197 @@
+Docker
+
+Files/Tutorials:
+	https://www.vultr.com/docs/deploy-a-php-application-using-docker-compose
+	https://blog.codeship.com/using-docker-compose-for-php-development/
+	https://semaphoreci.com/community/tutorials/dockerizing-a-php-application
+
+Other useful tutorials:
+​	https://www.pascallandau.com/blog/php-php-fpm-and-nginx-on-docker-in-windows-10/
+​	https://www.pascallandau.com/blog/setup-phpstorm-with-xdebug-on-docker/
+
+Jake Wight Doker Tutorials
+	Learn Docker in 12 Minutes: https://www.youtube.com/watch?v=YFl2mCHdv24
+		Docker vs. Traditional VMs - uses fewer ressources, less diskspace and memory.
+		Container is a running instance of an image.
+		Image is a template for creating the environment you want.
+		Images are defined using a Dockerfile, text file with a list of steps to perform.
+			Dockerfile -> Build Image -> Run Container
+
+		/docker/
+			/src/index.php
+			Dockerfile
+
+		Example Dockerfile:
+			FROM php:7.0-apache
+			COPY src/ /var/www/html
+			EXPOSE 80
+
+		Build image with `docker build -t <image_name> <path_to_dockerfile>`
+			Eg. `docker build -t hello-world .`
+
+		Run with:
+			docker run -p 8080:80 -v <fullpath>/docker-test/src/:/var/www/html/ hello-world
+
+		Launch http://localhost:8080
+
+	Learn Docker Compose in 12 Minutes: https://www.youtube.com/watch?v=Qw9zlE3t8Ko
+		Microservices, with APIs --> one Process Per Container
+			1 Container for Website
+			1 Container for Product Service in Python
+		Can be written in different languages, need to be able to talk to each other.
+			[ create simple Product Serice API with Python/Flask ]
+			[ create Dockerfile for Product Service ]
+		Docker Compose holds configuration for all containers.
+
+		Exmaple docker-compose.yml
+			version: '3'
+			services:
+				# individual `docker run` stuff
+				product-service:
+					build: .<folder_with_Dockerfile>
+					ports:
+						- 5001:80
+					volumes:
+						# for live code changes
+						- ./product:/usr/src/app
+				# or use previously built image
+				website:
+					image: php:apache
+					ports:
+						- 5000:80
+					volumes:
+						- ./website:/var/www/html
+					depends_on:
+						- product_service
+
+	Deploying with Docker: https://www.youtube.com/watch?v=F82K07NmRpk
+
+Docker Curriculum:
+​	https://docker-curriculum.com/
+
+	What is Docker:
+
+		According to Wiki:
+			Docker is an open-source project that automates the deployment of software applications inside containers
+			by providing an additional layer of abstraction and automation of OS-level virtualization on Linux.
+
+		In simpler words:
+			Docker is a tool that allows developers, sys-admins etc. to easily deploy their applications in a sandbox (called containers) to run on the host operating system i.e. Linux.
+			The key benefit of Docker is, that it allows users to package an application with all of its dependencies into a standardized unit for software development.
+			Unlike virtual machines, containers do not have the high overhead and hence enable more efficient usage of the underlying system and resources.
+
+	What are containers:
+		What are containers?
+			The industry standard today is to use Virtual Machines (VMs) to run software applications.
+			VMs run applications inside a guest Operating System, which runs on virtual hardware powered by the host OS.
+
+			VMs are great at providing full process isolation for applications: there are very few ways a problem in the host operating system can affect the software running in the guest operating system, and vice-versa.
+			But this isolation comes at great cost — the computational overhead spent virtualizing hardware for a guest OS to use is substantial.
+
+			Containers take a different approach: by leveraging the low-level mechanics of the host operating system, containers provide most of the isolation of virtual machines at a fraction of the computing power.
+
+		Why use containers?
+			Containers offer a logical packaging mechanism in which applications can be abstracted from the environment in which they actually run.
+			This decoupling allows container-based applications to be deployed easily and consistently, regardless of whether the target environment is a private data center, the public cloud, or even a developer’s personal laptop.
+			This gives developers the ability to create predictable environments that are isolated from rest of the applications and can be run anywhere.
+
+			From an operations standpoint, apart from portability, containers also give more granular control over resources - giving your infrastructure improved efficiency which can result in better utilization of your compute resources.
+
+			Due to these benefits, containers (& Docker) have seen widespread adoption. Companies like Google, Facebook, Netflix and Salesforce leverage containers to make large engineering teams more productive and to improve utilization of compute resources. In fact, Google credited containers for eliminating the need for an entire data center.
+
+Kube/Openshift/Docker
+
+Basic Terminology
+	- A container is a running instance of an image.
+	- An image is a template for creating the environment you want.
+	- Images are defined using a Dockerfile (a text file with a list of steps to perform).
+	- Dockerfile -> Build Image -> Run Container
+
+Base Structure
+	├── app/
+	│   └── docker-compose.yml
+	├── nginx/
+	│   └── Dockerfile
+	└── php/
+	    └── Dockerfile
+
+Dockerfile
+	You can reference a base image and make some modifications to it:
+
+	php/Dockerfile
+		FROM php:7.3-fpm-alpine
+		RUN apk update --no-cache \
+		    && apk add --no-cache $PHPIZE_DEPS \
+		    && apk add --no-cache mysql-dev \
+		    && docker-php-ext-install pdo pdo_mysql
+
+	nginx/Dockerfile
+		FROM nginx:1.15.8-alpine
+		COPY ./default.conf /etc/nginx/conf.d/default.conf
+
+	nginx/default.conf
+		server {
+		    listen 80 default_server;
+		    listen [::]:80 default_server ipv6only=on;
+
+		    root /app;
+		    index index.php;
+
+		    #server_name server_domain_or_IP;
+
+		    location / {
+		        try_files $uri $uri/ /index.php?$query_string;
+		    }
+
+		    location ~ \.php$ {
+		    	# Note that at the fastcgi_pass php:9000 line we are referencing the PHP container by it's name inside
+		    	# the service block of the docker-compose.yml configuration file. Internally docker-compose creates a
+		    	# network and assigns the service name as the host name to each of the services defined.
+		        try_files $uri /index.php =404;
+		        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+		        fastcgi_pass php:9000;
+		        fastcgi_index index.php;
+		        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+		        include fastcgi_params;
+		    }
+		}
+
+	"docker build -t your-img-name <dir_with_dockerfile>/" <-- This generates a docker image
+
+docker-compose
+	You can reference predefined images or the ones you built before with Dockerfiles and use them to assemble the components that make up your app.
+
+		version: '2'
+			services:
+			  php:
+			    image: vultr-php # or img-name from above
+			    volumes:
+		    	  # map the current directory (./) to the /app directory inside the container
+			      - ./:/app
+			    working_dir: /app
+		      web:
+			    image: vultr-nginx # or img-name from above
+			    volumes:
+		    	  # map the current directory (./) to the /app directory inside the container
+			      - ./:/app
+			    depends_on:
+			      - php
+			    ports:
+			      - 80:80
+
+	Compose your container
+		cd ~/docker/app && docker-compose up -d
+
+	Check if your container was executed
+		docker ps
+
+	Inside the docker/app directory, you can execute basically any command
+		docker-compose exec [service] [command]
+		docker-compose exec php php -v
+
+Your application
+	vim app/index.php
+		<?php phpinfo();
+	Get external vult-instance-ip
+		hostname -I
+	Make sure the port 80 is accessible through your firewall
